@@ -1,13 +1,29 @@
 // dllmain.cpp : Defines the entry point for the DLL application.
 
 #include "pch.h"
+#include "zmq.hpp"
 #include <iostream>
 #include <vector>
 #include <gd.h>
 
+// ZeroMQ 
+zmq::context_t context(1);
+zmq::socket_t socket(context, zmq::socket_type::req);
+
 bool(__thiscall* PlayLayer_init)(gd::PlayLayer* self, gd::GJGameLevel* level);
 bool __fastcall PlayLayer_init_H(gd::PlayLayer* self, void*, gd::GJGameLevel* level) {
-    std::cout << level->m_sLevelString << '\n';
+    //Build message
+    auto msg = (std::string("init:") + level->m_sLevelString).c_str();
+
+    //Send message
+    zmq::message_t request(strlen(msg));
+    memcpy(request.data(), msg, strlen(msg));
+    socket.send(request, zmq::send_flags::none);
+
+    //Get reply
+    zmq::message_t reply;
+    socket.recv(reply, zmq::recv_flags::none);
+
     PlayLayer_init(self, level);
     return true;
 }
@@ -15,7 +31,21 @@ bool __fastcall PlayLayer_init_H(gd::PlayLayer* self, void*, gd::GJGameLevel* le
 bool(__thiscall* PlayLayer_update)(gd::PlayLayer* self, float dt);
 bool __fastcall PlayLayer_update_H(gd::PlayLayer* self, void*, float dt)
 {
-    std::cout << '(' << self->m_pPlayer1->getPositionX() << ',' << self->m_pPlayer1->getPositionY() << ")\n";
+    //Build message
+    float x = self->m_pPlayer1->getPositionX();
+    float y = self->m_pPlayer1->getPositionY();
+    auto msg = (std::string("update:") + std::to_string(x) + ',' + std::to_string(y)).c_str();
+
+    //Send message
+    zmq::message_t request(strlen(msg));
+    memcpy(request.data(), msg, strlen(msg));
+    socket.send(request, zmq::send_flags::none);
+
+    //Get reply
+    zmq::message_t reply;
+    socket.recv(reply, zmq::recv_flags::none);
+    std::cout << reply.to_string() << '\n';
+
     PlayLayer_update(self, dt);
     return true;
 }
@@ -25,6 +55,9 @@ DWORD WINAPI thread(void* hModule){
     FILE* pFile = nullptr;
     AllocConsole();
     freopen_s(&pFile, "CONOUT$", "w", stdout);
+
+    // Connect ZeroMQ (Server must be already running)
+    socket.connect("tcp://localhost:6969");
 
     //Hook functions
     if (MH_Initialize() != MH_OK)
@@ -61,4 +94,3 @@ BOOL APIENTRY DllMain( HMODULE hModule,
     }
     return TRUE;
 }
-
