@@ -14,6 +14,7 @@ bool(__thiscall* PlayLayer_init)(gd::PlayLayer* self, gd::GJGameLevel* level);
 bool __fastcall PlayLayer_init_H(gd::PlayLayer* self, void*, gd::GJGameLevel* level) {
     //Build message
     auto msg = (std::string("init:") + level->m_sLevelString).c_str();
+    std::cout << "Sent level data\n";
 
     //Send message
     zmq::message_t request(strlen(msg));
@@ -45,6 +46,9 @@ bool __fastcall PlayLayer_update_H(gd::PlayLayer* self, void*, float dt)
     zmq::message_t reply;
     socket.recv(reply, zmq::recv_flags::none);
     std::cout << reply.to_string() << '\n';
+
+    if (reply.to_string() == "1")
+        self->m_pPlayer1->pushButton(0);
 
     PlayLayer_update(self, dt);
     return true;
