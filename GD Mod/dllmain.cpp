@@ -20,8 +20,13 @@ bool __fastcall PlayLayer_update_H(gd::PlayLayer* self, void*, float dt)
     return true;
 }
 
+DWORD WINAPI thread(void* hModule){
+    // Init console 
+    FILE* pFile = nullptr;
+    AllocConsole();
+    freopen_s(&pFile, "CONOUT$", "w", stdout);
 
-DWORD WINAPI thread(void* hModule) {
+    //Hook functions
     if (MH_Initialize() != MH_OK)
         FreeLibraryAndExitThread(reinterpret_cast<HMODULE>(hModule), 0);
 
@@ -37,12 +42,6 @@ DWORD WINAPI thread(void* hModule) {
     );
 
     MH_EnableHook(MH_ALL_HOOKS);
-
-    FILE* pFile = nullptr;
-    //Make a terminal for debug
-    AllocConsole();
-    freopen_s(&pFile, "CONOUT$", "w", stdout);
-
     return true;
 }
 
