@@ -38,11 +38,12 @@ if __name__ == "__main__":
 
     data = ""
     lvl = {}
+    w, h = (10, 5)
     while True:
         #  Wait for next request from client
         message = socket.recv()
         print(f"Received request: {message}")
-        message = message.decode('UTF-8')
+        message = message.decode('unicode_escape')
 
         args = message.split(":")
 
@@ -57,7 +58,6 @@ if __name__ == "__main__":
 
             pos_x = round(pos_x/cell_size)
             pos_y = round(pos_y/cell_size)
-            w, h = (20, 10)
             system("cls")
             for y in range(h, -h, -1):
                 for x in range(-w, w):
@@ -68,4 +68,4 @@ if __name__ == "__main__":
                 print("")
 
         #Send reply back to client (Currently just jumping randomly)
-        socket.send_string(str(random.randint(0,30)))
+        socket.send_string(str(random.randint(0,15)))
