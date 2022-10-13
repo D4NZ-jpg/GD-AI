@@ -11,7 +11,7 @@
 #include <support/base64.h>
 
 const int cellSize = 20;
-const int w = 20, h = 10;
+const int w = 20, h = 5;
 std::map<std::pair<int, int>, int> lvl_map;
 
 std::vector<std::string> split(std::string str, char delim)
@@ -79,13 +79,13 @@ std::map<std::pair<int,int>, int> build_level_map(std::string data)
 void visualize_map(std::pair<float,float> pos)
 {
     int pos_x = std::roundf(pos.first / cellSize);
-    int pos_y = std::roundf(pos.second / cellSize);
+    int pos_y = std::roundf(pos.second / cellSize) - 4;
     std::string out = "";
 
     system("cls");
     for (int y = h; y > -h; y--)
     {
-        for (int x = -w; x < w; x++)
+        for (int x = -3; x < w - 3; x++)
             if (lvl_map.count({ pos_x + x, pos_y + y }))
                 out += std::to_string(lvl_map[{pos_x + x, pos_y + y}]);
             else
