@@ -11,7 +11,7 @@
 #include <support/base64.h>
 
 const int cellSize = 20;
-const int w = 20, h = 5;
+constexpr int w = 20, h = 5;
 std::map<std::pair<int, int>, int> lvl_map;
 
 std::vector<std::string> split(std::string str, char delim)
@@ -116,6 +116,12 @@ bool __fastcall PlayLayer_update_H(gd::PlayLayer* self, void*, float dt)
     return true;
 }
 
+bool(__thiscall* PlayLayer_resetLevel)(gd::PlayLayer* self);
+bool __fastcall PlayLayer_resetLevel_H(gd::PlayLayer* self)
+{
+    return PlayLayer_resetLevel(self);
+}
+
 DWORD WINAPI thread(void* hModule){
     // Init console 
     FILE* pFile = nullptr;
@@ -127,14 +133,19 @@ DWORD WINAPI thread(void* hModule){
         FreeLibraryAndExitThread(reinterpret_cast<HMODULE>(hModule), 0);
 
     MH_CreateHook(
-        reinterpret_cast<void*>(gd::base + 0x01FB780), // Adress where to hook
-        reinterpret_cast<void*>(&PlayLayer_init_H),  // Function to be run
-        reinterpret_cast<void**>(&PlayLayer_init)  // Trampoline function(?)
+        reinterpret_cast<void*>(gd::base + 0x01FB780),
+        reinterpret_cast<void*>(&PlayLayer_init_H),
+        reinterpret_cast<void**>(&PlayLayer_init)  
     );
     MH_CreateHook(
         reinterpret_cast<void*>(gd::base + 0x2029C0),
         reinterpret_cast<void*>(&PlayLayer_update_H),
         reinterpret_cast<void**>(&PlayLayer_update)
+    );
+    MH_CreateHook(
+        reinterpret_cast<void*>(gd::base + 0x20BF00),
+        reinterpret_cast<void*>(&PlayLayer_resetLevel_H),
+        reinterpret_cast<void**>(&PlayLayer_resetLevel)
     );
 
     MH_EnableHook(MH_ALL_HOOKS);
