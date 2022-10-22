@@ -1,5 +1,7 @@
 // dllmain.cpp : Defines the entry point for the DLL application.
 
+#define NOMINMAX
+
 #include "pch.h"
 #include <iostream>
 #include <vector>
@@ -9,10 +11,24 @@
 #include <gd.h>
 #include <support/zip_support/ZipUtils.h>
 #include <support/base64.h>
+#include <EvolutionNet/EvolutionNet.hpp>
 
 const int cellSize = 20;
 constexpr int w = 20, h = 5;
 std::map<std::pair<int, int>, int> lvl_map;
+
+// AI vars
+
+static constexpr int input_num = w * h * 2;
+static constexpr int output_num = 1;
+static constexpr bool bias = true;
+static constexpr size_t pop_size = 1;
+
+using ParamConfig = EvolutionNet::DefaultParamConfig;
+using EvolutionNetT = EvolutionNet::EvolutionNet<input_num, output_num, bias, ParamConfig>;
+using Network = EvolutionNetT::NetworkT;
+using FitnessScore = EvolutionNet::FitnessScore;
+EvolutionNetT evolutionNet;
 
 std::vector<std::string> split(std::string str, char delim)
 {
@@ -85,7 +101,7 @@ void visualize_map(std::pair<float,float> pos)
     system("cls");
     for (int y = h; y > -h; y--)
     {
-        for (int x = -3; x < w - 3; x++)
+        for (int x = 0; x < w; x++)
             if (lvl_map.count({ pos_x + x, pos_y + y }))
                 out += std::to_string(lvl_map[{pos_x + x, pos_y + y}]);
             else
@@ -104,6 +120,7 @@ bool(__thiscall* PlayLayer_init)(gd::PlayLayer* self, gd::GJGameLevel* level);
 bool __fastcall PlayLayer_init_H(gd::PlayLayer* self, void*, gd::GJGameLevel* level) {
     std::string lvl_string = decode_level(level->m_sLevelString);
     lvl_map = build_level_map(lvl_string);
+    evolutionNet.initialize(pop_size);
     PlayLayer_init(self, level);
     return true;
 }
@@ -111,6 +128,31 @@ bool __fastcall PlayLayer_init_H(gd::PlayLayer* self, void*, gd::GJGameLevel* le
 bool(__thiscall* PlayLayer_update)(gd::PlayLayer* self, float dt);
 bool __fastcall PlayLayer_update_H(gd::PlayLayer* self, void*, float dt)
 {
+    int pos_x = std::roundf(self->m_pPlayer1->getPositionX() / cellSize);
+    int pos_y = std::roundf(self->m_pPlayer1->getPositionY() / cellSize) - 4;
+
+    evolutionNet.evaluateAll([pos_x, pos_y, self](Network* network) {
+        for (int y = h; y > -h; y--)
+            for (int x = 0; x < w; x++)
+                if (lvl_map.count({ pos_x + x, pos_y + y }))
+                    network->setInputValue((h - y) * w + x, lvl_map[{pos_x + x, pos_y + y}]);
+                else
+                    network->setInputValue((h - y) * w + x, 0);
+
+        network->feedForward<ParamConfig>();
+        const float output = network->getOutputValue(0);
+        std::cout << "\nfitness: " << network->getFitness() << " output: " << output << '\n';
+        
+        if (output > 0.8f)
+        {
+            self->m_pPlayer1->pushButton(0);
+            self->m_pPlayer1->pushButton(1);
+        }
+
+        FitnessScore score = self->m_pPlayer1->getPositionX();
+        network->setFitness(score);
+    });
+
     visualize_map({ self->m_pPlayer1->getPositionX(), self->m_pPlayer1->getPositionY() });
     PlayLayer_update(self, dt);
     return true;
@@ -119,6 +161,8 @@ bool __fastcall PlayLayer_update_H(gd::PlayLayer* self, void*, float dt)
 bool(__thiscall* PlayLayer_resetLevel)(gd::PlayLayer* self);
 bool __fastcall PlayLayer_resetLevel_H(gd::PlayLayer* self)
 {
+    if (self->m_pPlayer1->getPositionX() > 0.0f)
+        evolutionNet.evolve();
     return PlayLayer_resetLevel(self);
 }
 

@@ -27,6 +27,7 @@
 #include <ostream>
 #include <utility>
 #include <vector>
+#include <numeric>
 
 namespace EvolutionNet {
 
